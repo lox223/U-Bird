@@ -4855,15 +4855,30 @@ THE SOFTWARE.
   }
   function line(ctx, a, b, c, d) { ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); }
 
-  function dots(ctx, pts, color, max, outlined = false, size = 1) {
+  function dots(ctx, pts, color, max, outlined = false, size = 1, fadeTail = false) {
     ctx.save();
     ctx.fillStyle = color;
     if (outlined) { ctx.strokeStyle = '#075478'; ctx.lineWidth = 2.5 * size; }
     const n = Math.min(pts.length, max || pts.length);
     for (let i = 0; i < n; i++) {
+      const progress = i / Math.max(1, n - 1);
+      const fade = fadeTail ? Math.max(0, (progress - 0.35) / 0.65) : 0;
+      const { x, y } = pts[i];
+      const radius = size * (max ? 7 - (i / n) * (outlined ? 2 : 4) : 4);
       ctx.globalAlpha = max ? (outlined ? 0.6 + 0.4 * (1 - i / n) : 1 - i / n) : 0.8;
-      circle(ctx, pts[i].x, pts[i].y, size * (max ? 7 - (i / n) * (outlined ? 2 : 4) : 4));
-      if (outlined) ctx.stroke();
+      if (fade > 0) {
+        ctx.globalAlpha *= (1 - fade) ** 2;
+        if (fade > 0.85) break;
+        const edge = radius * (1 + 0.55 * fade);
+        const blur = ctx.createRadialGradient(x, y, radius * (1 - fade), x, y, edge);
+        blur.addColorStop(0, color);
+        blur.addColorStop(1, 'transparent');
+        ctx.fillStyle = blur;
+        circle(ctx, x, y, edge);
+      } else {
+        circle(ctx, x, y, radius);
+        if (outlined) ctx.stroke();
+      }
       ctx.fill();
     }
     ctx.restore();
@@ -5920,7 +5935,7 @@ THE SOFTWARE.
           const pts = Sim.predict(SX + this.drag.dx, SY + this.drag.dy, v2.x, v2.y, wide ? 240 : 75)
             .filter((p, i) => wide ? i % 6 === 4 && p.x < width + 28 : i % 3 === 2);
           const dotScale = wide ? Math.max(1, 2.8 * this.dpr / (5 * v.s)) : 1;
-          R.dots(ctx, pts, '#39C9F4', wide ? pts.length : 22, true, dotScale);
+          R.dots(ctx, pts, '#39C9F4', wide ? pts.length : 22, true, dotScale, true);
         }
       }
 
