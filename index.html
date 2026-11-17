@@ -1963,7 +1963,7 @@ THE SOFTWARE.
       gameCanvas: 'Игровое поле', pauseButton: 'Пауза', enemiesRemain: 'Осталось противников', birdsRemain: 'Осталось птенцов',
       prevWorld: 'Предыдущий мир', nextWorld: 'Следующий мир',
       hintKeyboard: 'Стрелки — натянуть и прицелиться, пробел — выстрел, P — пауза.',
-      hintLongShot: 'Для дальнего выстрела натяни рогатку сильнее. Камера сама покажет траекторию.',
+      hintLongShot: 'Натяни рогатку и прицелься по голубой траектории. Дальние цели видны до выстрела.',
       arena16: 'Сбей валуны на стеклянные опоры. С высоты они пробьют нижние укрытия.',
       arena17: 'У двух колодцев разные крыши. Начни с настила над ближним.',
       arena18: 'Камень прикрывает фасад. Разверни Бумеранга за стеклянной стойкой.',
@@ -2045,7 +2045,7 @@ THE SOFTWARE.
       gameCanvas: 'Playing field', pauseButton: 'Pause', enemiesRemain: 'Opponents remaining', birdsRemain: 'Birds remaining',
       prevWorld: 'Previous world', nextWorld: 'Next world',
       hintKeyboard: 'Arrow keys to aim, Space to launch, P to pause.',
-      hintLongShot: 'Pull farther for a long shot. The camera zooms out to show your trajectory.',
+      hintLongShot: 'Pull back and follow the blue trajectory dots. Distant targets stay in view while you aim.',
       arena16: 'Knock the boulders onto the glass supports. Let the fall do the work.',
       arena17: 'The two wells have different roofs. Start with the deck over the near well.',
       arena18: 'Stone guards the front. Turn Boomerang back behind the glass support.',
@@ -4855,14 +4855,14 @@ THE SOFTWARE.
   }
   function line(ctx, a, b, c, d) { ctx.beginPath(); ctx.moveTo(a, b); ctx.lineTo(c, d); ctx.stroke(); }
 
-  function dots(ctx, pts, color, max, outlined = false) {
+  function dots(ctx, pts, color, max, outlined = false, size = 1) {
     ctx.save();
     ctx.fillStyle = color;
-    if (outlined) { ctx.strokeStyle = '#075478'; ctx.lineWidth = 2.5; }
+    if (outlined) { ctx.strokeStyle = '#075478'; ctx.lineWidth = 2.5 * size; }
     const n = Math.min(pts.length, max || pts.length);
     for (let i = 0; i < n; i++) {
       ctx.globalAlpha = max ? (outlined ? 0.6 + 0.4 * (1 - i / n) : 1 - i / n) : 0.8;
-      circle(ctx, pts[i].x, pts[i].y, max ? 7 - (i / n) * (outlined ? 2 : 4) : 4);
+      circle(ctx, pts[i].x, pts[i].y, size * (max ? 7 - (i / n) * (outlined ? 2 : 4) : 4));
       if (outlined) ctx.stroke();
       ctx.fill();
     }
@@ -5138,25 +5138,22 @@ THE SOFTWARE.
       const v = this.view, menu = this.state === 'menu', width = this.sim?.width || C.W;
       const k = menu ? 0 : this.zoom.k;
       const pan = menu ? 0 : this.cameraPan, lift = menu ? 0 : this.cameraLift;
-      const drag = width > C.W && !menu ? this.drag : null;
-      const baseX = drag ? drag.anchorX - SX * v.s : v.ox - pan * v.s;
-      const baseY = drag ? drag.anchorY - SY * v.s : v.oy + lift * v.s;
+      const baseX = v.ox - pan * v.s;
+      const baseY = v.oy + lift * v.s;
       let scale = v.s * (1 + (this.zoom.amt || 0.22) * k);
       let ox = baseX + this.zoom.x * (v.s - scale)
         + (this.canvas.width / 2 - (this.zoom.x * v.s + baseX)) * 0.35 * k;
       let oy = baseY + this.zoom.y * (v.s - scale)
         + (this.canvas.height / 2 - (this.zoom.y * v.s + baseY)) * 0.35 * k;
 
-      if (!menu && width > C.W && this.overview > 0) {
-
-        const anchorX = drag ? drag.anchorX : v.ox + SX * v.s;
-        const anchorY = drag ? drag.anchorY : v.oy + SY * v.s;
-        const fullFit = Math.min(v.s, (this.canvas.width - anchorX) / (width - SX + 110));
-        const fit = drag ? Math.max(fullFit, v.s * 0.78) : fullFit;
-        const x = drag ? SX + drag.dx : SX, y = drag ? SY + drag.dy : SY;
-        const wideX = anchorX + (x - SX) * v.s - x * fit;
-        const wideY = anchorY + (y - SY) * v.s - y * fit;
-        const blend = this.overview;
+      // Keep the whole arena in view while aiming, including short pulls.
+      const aiming = this.phase === 'ready' && !this.nuke.mode && !this.ending;
+      const blend = aiming ? 1 : this.overview;
+      if (!menu && width > C.W && blend > 0) {
+        const paddedWidth = width + 220;
+        const fit = Math.min(v.s, this.canvas.width / paddedWidth);
+        const wideX = (this.canvas.width - width * fit) / 2;
+        const wideY = v.oy + SY * (v.s - fit);
         scale += (fit - scale) * blend;
         ox += (wideX - ox) * blend;
         oy += (wideY - oy) * blend;
@@ -5180,12 +5177,10 @@ THE SOFTWARE.
 
     updateCamera(dt) {
       if (this.sim.width <= C.W) return;
-      let pan = 0, lift = 0, overview = this.introT > 0.65 || this.nuke.mode === 'aim' ? 1 : 0;
-      if (this.drag) {
-        const pull = Math.max(0, -this.drag.dx) / C.MAX_PULL;
-        const k = Math.max(0, Math.min(1, (pull - 0.21) / 0.37));
-        overview = k * k * (3 - 2 * k);
-      } else if (this.nuke.mode === 'fall' || this.nuke.mode === 'boom') {
+      let pan = 0, lift = 0;
+      const aiming = ['ready', 'hop'].includes(this.phase) && !this.nuke.mode && !this.ending;
+      const overview = aiming || this.nuke.mode === 'aim' ? 1 : 0;
+      if (this.nuke.mode === 'fall' || this.nuke.mode === 'boom') {
         pan = this.nuke.x - C.W / 2;
       } else if (this.finale > 0) {
         pan = this.zoom.x - C.W / 2;
@@ -5347,11 +5342,10 @@ THE SOFTWARE.
         return;
       }
       if (!this.drag) {
-        const v = this.worldView();
         const guide = this.levelIdx === 0 && this.shots === 0;
         if (!axis) return;
         const pull = guide ? GUIDE_PULL : { dx: -66, dy: 34 };
-        this.drag = { id: -1, keyboard: true, ...pull, anchorX: v.ox + SX * v.s, anchorY: v.oy + SY * v.s };
+        this.drag = { id: -1, keyboard: true, ...pull };
         if (!guide) this.showHint('hintKeyboard');
         this.ui.updateGuide();
         A.play('grab', { x: SX });
@@ -5380,8 +5374,7 @@ THE SOFTWARE.
       if (this.phase === 'ready' && Math.hypot(p.x - SX, p.y - SY) < Math.max(54, reach)) {
         const p0 = this.canvasPoint(e);
         this.drag = { id: e.pointerId, dx: 0, dy: 0, lastL: 0,
-          start: p0, scale: this.sim.width > C.W ? this.view.s : v.s,
-          anchorX: v.ox + SX * v.s, anchorY: v.oy + SY * v.s };
+          start: p0, scale: v.s };
         A.play('grab', { x: SX });
         this.ui.updateGuide();
         try { this.canvas.setPointerCapture(e.pointerId); } catch (er) {}
@@ -5926,7 +5919,8 @@ THE SOFTWARE.
           const wide = width > C.W;
           const pts = Sim.predict(SX + this.drag.dx, SY + this.drag.dy, v2.x, v2.y, wide ? 240 : 75)
             .filter((p, i) => wide ? i % 6 === 4 && p.x < width + 28 : i % 3 === 2);
-          R.dots(ctx, pts, '#39C9F4', wide ? pts.length : 22, true);
+          const dotScale = wide ? Math.max(1, 2.8 * this.dpr / (5 * v.s)) : 1;
+          R.dots(ctx, pts, '#39C9F4', wide ? pts.length : 22, true, dotScale);
         }
       }
 
