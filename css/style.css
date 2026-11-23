@@ -12,10 +12,10 @@
   --muted-ink: #735035;
   --white: #fffdf4;
   --hud-surface: #512710f5;
-  --edge-top: max(12px, env(safe-area-inset-top));
-  --edge-right: max(14px, env(safe-area-inset-right));
-  --edge-bottom: max(14px, env(safe-area-inset-bottom));
-  --edge-left: max(14px, env(safe-area-inset-left));
+  --edge-top: max(12px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  --edge-right: max(14px, var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
+  --edge-bottom: max(14px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  --edge-left: max(14px, var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
   --shadow: 0 4px 0 #682f16;
   --star: polygon(50% 2%, 64% 33%, 98% 37%, 74% 61%, 80% 95%, 50% 79%, 20% 95%, 26% 61%, 2% 37%, 36% 33%);
   font-family: "Segoe UI", system-ui, sans-serif;
@@ -694,7 +694,7 @@ button:disabled { cursor: not-allowed; }
   position: absolute;
   z-index: 6;
   left: 50%;
-  bottom: max(7px, env(safe-area-inset-bottom));
+  bottom: max(7px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   display: inline-flex;
   align-items: center;
   justify-content: center;

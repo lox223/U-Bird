@@ -9,7 +9,12 @@
   const GAMEPLAY_COOLDOWN_MS = 1050;
   let sdk = null;
   let initialization = null;
+  let connection = null;
+  let connecting = false;
+  let offlineSelected = false;
   let cloudStorage;
+  let saveHasLoaded = false;
+  let accountChanging = false;
   let playing = false;
   let reportedPlaying = false;
   let gameplayTimer;
@@ -82,14 +87,18 @@
   const platform = {
     muteAudio: false,
     onMuteAudioChange: null,
+    get waitingForSave() { return connecting && !offlineSelected; },
+    waitForSave() { return connection; },
+    chooseOffline() { offlineSelected = true; },
 
     init() {
       if (initialization) return initialization;
+      connecting = true;
       let deadline;
       const timeout = new Promise((resolve) => {
         deadline = root.setTimeout(() => resolve(null), STARTUP_LIMIT_MS);
       });
-      const connect = initializeSdk()
+      connection = initializeSdk()
         .then((instance) => {
           if (!instance) return;
           sdk = instance;
@@ -104,10 +113,11 @@
           updateAudio(sdk.game?.settings);
           sdk.game?.addSettingsChangeListener?.(updateAudio);
         })
-        .catch(() => {});
-      // A delayed network request must not block the player. A late SDK can
-      // still report active play, but storage stays with the backend boot chose.
-      initialization = Promise.race([connect, timeout])
+        .catch(() => {})
+        .finally(() => { connecting = false; });
+      // After the soft deadline the loader can offer a separate offline game.
+      // The deadline itself does not select storage.
+      initialization = Promise.race([connection, timeout])
         .finally(() => root.clearTimeout(deadline));
       return initialization;
     },
@@ -142,6 +152,8 @@
     },
 
     load() {
+      if (this.waitingForSave) throw new Error('The save backend is still connecting.');
+      if (offlineSelected) return readSave(localValue(SAVE_KEY));
       // On CrazyGames the Data module owns guest and signed-in save selection.
       // Mark the one-time legacy import on this origin, across account changes.
       try {
@@ -152,6 +164,19 @@
           if (legacy) data.setItem(SAVE_KEY, JSON.stringify(legacy));
           writeLocalValue(MIGRATION_KEY, '1');
           cloudStorage = data;
+          if (!saveHasLoaded && sdk.environment === 'crazygames') {
+            try {
+              sdk.user?.addAuthListener?.(() => {
+                // The SDK can already have switched stores when this fires.
+                // Never write the old in-memory save into the new store.
+                accountChanging = true;
+                root.location.reload();
+              });
+            } catch (_) {
+              // The User module may be disabled. The portal still reloads on login.
+            }
+          }
+          saveHasLoaded = true;
           return cloudSave || legacy;
         }
       } catch (_) {
@@ -162,6 +187,7 @@
     },
 
     save(data) {
+      if (accountChanging || this.waitingForSave) return;
       const value = JSON.stringify(data);
       if (cloudStorage) {
         try {

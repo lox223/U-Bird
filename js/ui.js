@@ -550,12 +550,30 @@
       this.refreshAbility();
     },
 
+    async waitForSave() {
+      if (!P.waitingForSave) return;
+      const status = $('#load-status');
+      const button = $('#play-offline');
+      status.dataset.i18n = 'progressLoading';
+      I18n.apply();
+      button.classList.remove('hidden');
+      let chooseOffline;
+      const offline = new Promise((resolve) => {
+        chooseOffline = () => { P.chooseOffline(); resolve(); };
+        button.addEventListener('click', chooseOffline, { once: true });
+      });
+      await Promise.race([P.waitForSave(), offline]);
+      button.removeEventListener('click', chooseOffline);
+      button.classList.add('hidden');
+    },
+
     async boot() {
       const bar = $('.loader span');
       bar.style.width = '30%';
       await P.init();
       bar.style.width = '65%';
-      const loaded = await P.load();
+      await this.waitForSave();
+      const loaded = P.load();
       this.save = Object.assign({ unlocked: 1, stars: [], best: [], settings: {}, ach: {}, seen: {}, stats: {}, skin: 'none' }, loaded || {});
       this.save.unlocked = Math.max(1, Math.min(CAMPAIGN_COUNT, Number(this.save.unlocked) || 1));
       for (const key of ['stars', 'best']) if (!Array.isArray(this.save[key])) this.save[key] = [];
