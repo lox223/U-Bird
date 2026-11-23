@@ -25,6 +25,7 @@
   const UI = {
     save: null, screen: 'loading', activeModal: null, round: 0,
     introQueue: [], achQueue: [], achBusy: false,
+    failures: {}, activeSeconds: 0, lastVideoAt: 0, lastRewardOfferAt: -Infinity,
 
     show(name) {
       this.screen = name;
@@ -266,14 +267,16 @@
       const trial = Game.def.trial;
       // достижения за победу
       this.unlock('first');
-      if (!trial && r.shots === 1 && r.level >= 1) this.unlock('oneshot');
-      if (!trial && r.level >= 6 && !r.used.booster && !r.used.nuke) this.unlock('clean');
+      if (!trial && !r.used.rescue && r.shots === 1 && r.level >= 1) this.unlock('oneshot');
+      if (!trial && !r.used.rescue && r.level >= 6 && !r.used.booster && !r.used.nuke) this.unlock('clean');
       if (r.level === 14) this.unlock('citadel');
       if (r.level === 19) this.unlock('iceking');
       if (r.level === CAMPAIGN_COUNT - 1) this.unlock('final');
       this.checkProgressAch();
 
       $('#win-score').textContent = '0';
+      this.failures[r.level] = 0;
+      $('#win-helped').classList.toggle('hidden', !r.used.rescue);
       $('#win-best').textContent = fmt(r.best);
       $('#win-record').classList.toggle('hidden', !r.newRecord);
       $('#btn-next').classList.toggle('hidden', !r.hasNext);
@@ -314,12 +317,80 @@
       this.checkProgressAch();
       const round = this.round;
       this.refreshControls();
+      this.failures[Game.levelIdx] = (this.failures[Game.levelIdx] || 0) + 1;
+      this.rewardOffered = false;
+      if (!Game.rescueUsed && !Game.def.trial && Game.levelIdx >= 3 && this.failures[Game.levelIdx] >= 2
+          && this.activeSeconds >= 180 && this.activeSeconds - this.lastRewardOfferAt >= 180 && P.canRequestRewarded) {
+        this.rewardOffered = true;
+        this.lastRewardOfferAt = this.activeSeconds;
+      }
+      this.refreshRescue();
       $('#screen-lose .title').textContent = I18n.t(Game.def.trial ? 'trialIncomplete' : 'loseTitle');
       $('#lose-left').classList.toggle('hidden', Boolean(Game.def.trial));
       $('#lose-left').textContent = `${I18n.t('enemiesLeft')}: ${r.left}`;
       $('#lose-tip').textContent = Game.def.trial ? I18n.t('trialTip') : this.tip();
       this.fillGoals($('#lose-goals'), this.trialGoals());
       setTimeout(() => { if (round === this.round) this.modal('lose', true); }, 460);
+    },
+
+    refreshRescue() {
+      const eligible = Game.state === 'lose' && !Game.rescueUsed && !Game.def.trial && Game.levelIdx >= 3;
+      const tokens = this.save.rescueTokens || 0;
+      $('#rescue-offer').classList.toggle('hidden', !eligible || (!tokens && !(this.rewardOffered && P.canRequestRewarded)));
+      $('#rescue-token').classList.toggle('hidden', !eligible || !tokens);
+      $('#rescue-token span').textContent = I18n.t('rescueToken').replace('{n}', tokens);
+      $('#rescue-ad').classList.toggle('hidden', !eligible || !this.rewardOffered || !P.canRequestRewarded);
+    },
+
+    async rescue(withAd) {
+      if (P.adPending || this.activeModal !== 'lose' || Game.rescueUsed || Game.def.trial || Game.levelIdx < 3) return;
+      const round = this.round;
+      if (withAd) {
+        if (!this.rewardOffered || !P.canRequestRewarded) return;
+        this.rewardOffered = false;
+        const result = await P.requestAd('rewarded');
+        if (!result.finished) {
+          this.refreshRescue(); this.toast('adUnavailable'); return;
+        }
+        if (round !== this.round) return;
+        this.lastVideoAt = this.activeSeconds;
+      } else {
+        if (!(this.save.rescueTokens > 0)) return;
+        this.save.rescueTokens--; this.persist();
+      }
+      if (Game.rescue()) {
+        this.modal('lose', false);
+        this.toast('rescueGranted');
+        Game.canvas.focus({ preventScroll: true });
+      }
+    },
+
+    async nextLevel() {
+      if (this.activeModal !== 'win' || Game.state !== 'win') return;
+      const i = Game.levelIdx + 1, round = this.round;
+      if (Game.levelIdx === CAMPAIGN_COUNT - 1 || !this.canEnterLevel(i)) return;
+      if (!Game.used.rescue && Game.levelIdx >= 2 && this.activeSeconds >= 180 && this.activeSeconds - this.lastVideoAt >= 180 && P.canRequestAd) {
+        const result = await P.requestAd('midgame');
+        if (result.finished) this.lastVideoAt = this.activeSeconds;
+      }
+      if (round === this.round) this.startLevel(i);
+    },
+
+    adState(state, started) {
+      const blocking = state !== 'idle';
+      $('#ad-overlay').classList.toggle('hidden', !blocking);
+      $('#app').inert = blocking;
+      if (blocking) {
+        Game.cancelAim(); Game.extPause.add('ad'); P.gameplayStop();
+        if (state === 'playing' && !this.adMuted) {
+          this.lastVideoAt = this.activeSeconds;
+          this.adMuted = true; A.pushPause();
+        }
+      } else {
+        Game.extPause.delete('ad');
+        if (this.adMuted) { this.adMuted = false; A.popPause(); }
+        this.markPlayable();
+      }
     },
 
     // Состояние кнопок бустеров и грозового заряда
@@ -452,6 +523,7 @@
 
     // ---------- Обработка кнопок ----------
     async act(a, el) {
+      if (P.adPending) return;
       const s = this.save;
       switch (a) {
         case 'play': this.startLevel(Math.min(CAMPAIGN_COUNT, s.unlocked) - 1); break;
@@ -492,6 +564,7 @@
           // сброс в два нажатия: сначала спрашиваем, потом сбрасываем
           if (!this._resetArmed) { this._resetArmed = true; $('#btn-reset span').textContent = I18n.t('resetSure'); return; }
           s.unlocked = 1; s.stars = []; s.best = []; s.ach = {}; s.seen = {}; s.stats = {}; s.skin = 'none'; s.nukes = 0;
+          s.rescueTokens = 0; this.failures = {};
           R.setSkin('none'); this.persist(); this.refreshSettings(); this.refreshStars(); this.toast('resetDone');
           break;
         case 'lang':
@@ -513,9 +586,9 @@
         case 'restart': this.startLevel(Game.levelIdx); break;
         case 'retry': this.startLevel(Game.levelIdx); break;
         case 'menu': this.toMenu(); break;
-        case 'next':
-          if (Game.levelIdx !== CAMPAIGN_COUNT - 1 && this.canEnterLevel(Game.levelIdx + 1)) this.startLevel(Game.levelIdx + 1);
-          break;
+        case 'next': await this.nextLevel(); break;
+        case 'rescue-ad': await this.rescue(true); break;
+        case 'rescue-token': await this.rescue(false); break;
         case 'ability':
           if (Game.useAbility()) Game.canvas.focus({ preventScroll: true });
           break;
@@ -580,6 +653,8 @@
       this.save.settings = Object.assign({ music: true, sfx: true, vib: true, lang: null }, this.save.settings);
       ['ach', 'seen', 'stats'].forEach((k) => { if (!this.save[k] || typeof this.save[k] !== 'object') this.save[k] = {}; });
       Game.save = this.save;
+      this.save.rescueTokens = Math.max(0, Math.min(3, Math.floor(Number(this.save.rescueTokens) || 0)));
+      P.onAdStateChange = (state, started) => this.adState(state, started);
       R.setSkin(this.save.skin);
 
       I18n.set(this.save.settings.lang || P.lang());

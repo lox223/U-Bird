@@ -6,7 +6,9 @@
   <meta name="theme-color" content="#ffbd45">
   <meta name="description" content="Launch your flock, ride the wind through rings, and topple forts in YooBird, a slingshot puzzle with 28 levels.">
   <title>YooBird</title>
-  <link rel="stylesheet" href="css/style.css?v=4">
+  <!-- Use full only after CrazyGames enables Full Launch monetization. -->
+  <meta name="yoobird-ad-mode" content="basic">
+  <link rel="stylesheet" href="css/style.css?v=4.2">
 </head>
 <body>
   <div id="app">
@@ -176,6 +178,7 @@
         <div class="win-stats" id="win-stats"></div>
         <ul id="win-goals" class="result-goals"></ul>
         <div class="muted" id="win-next"></div>
+        <p id="win-helped" class="muted hidden" data-i18n="rescueWin">Assisted clear · up to 2 stars. Replay unaided for 3 stars.</p>
         <div class="badge win-nuke hidden" id="win-nuke" data-i18n="nukeEarned">Earned a Storm Burst for three stars!</div>
         <p id="win-alldone" class="muted hidden" data-i18n="allDone"></p>
         <div class="row-btns">
@@ -195,6 +198,11 @@
         <ul id="lose-goals" class="result-goals"></ul>
         <p class="tip" id="lose-tip"></p>
         <button class="btn btn-big" data-action="retry" data-primary><span data-i18n="retry">Попробовать ещё раз</span></button>
+        <div id="rescue-offer" class="rescue-offer hidden">
+          <p class="muted" data-i18n="rescueHelp">One extra chick. Keep your progress in this attempt. Up to 2 stars.</p>
+          <button id="rescue-ad" class="btn btn-big" data-action="rescue-ad"><span data-i18n="rescueAd">Watch ad · +1 chick</span></button>
+          <button id="rescue-token" class="btn btn-big" data-action="rescue-token"><span></span></button>
+        </div>
         <button class="btn btn-small" data-action="menu"><span data-i18n="menu">Меню</span></button>
       </div>
     </section>
@@ -230,15 +238,16 @@
 
   </div>
 
+  <div id="ad-overlay" class="hidden" role="status" aria-live="polite"><span data-i18n="adLoading">Loading advertisement…</span></div>
   <script src="js/lib/matter.min.js"></script>
   <script src="js/wind.js"></script>
   <script src="js/sim.js"></script>
   <script src="js/levels.js"></script>
-  <script src="js/i18n.js?v=4.1"></script>
+  <script src="js/i18n.js?v=4.2"></script>
   <script src="js/audio.js"></script>
-  <script src="js/platform.js?v=4.1"></script>
+  <script src="js/platform.js?v=4.2"></script>
   <script src="js/render.js"></script>
-  <script src="js/game.js?v=4"></script>
-  <script src="js/ui.js?v=4.1"></script>
+  <script src="js/game.js?v=4.2"></script>
+  <script src="js/ui.js?v=4.2"></script>
 </body>
 </html>

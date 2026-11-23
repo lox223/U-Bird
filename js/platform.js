@@ -20,6 +20,8 @@
   let gameplayTimer;
   const gameplaySentAt = { gameplayStart: -Infinity, gameplayStop: -Infinity };
   let loadingFinished = false;
+  let adPending = false;
+  let adsDisabled = false;
 
   async function initializeSdk() {
     if (!root.CrazyGames?.SDK) {
@@ -87,6 +89,56 @@
   const platform = {
     muteAudio: false,
     onMuteAudioChange: null,
+    onAdStateChange: null,
+    get canRequestAd() { return !!sdk?.ad?.requestAd && !adsDisabled && !offlineSelected; },
+    get canRequestRewarded() {
+      return this.canRequestAd && root.document.querySelector('meta[name="yoobird-ad-mode"]')?.content === 'full';
+    },
+    get adPending() { return adPending; },
+
+    requestAd(type) {
+      if (!['midgame', 'rewarded'].includes(type) || !this.canRequestAd || (type === 'rewarded' && !this.canRequestRewarded) || adPending) {
+        return Promise.resolve({ finished: false, code: 'unavailable' });
+      }
+      adPending = true;
+      return new Promise((resolve) => {
+        let settled = false, started = false, timedOut = false, timer;
+        const finish = (finished, code) => {
+          if (settled) {
+            // A very late SDK video still owns the pause until its terminal callback.
+            if (timedOut && started && adPending) {
+              adPending = false; this.onAdStateChange?.('idle', true);
+            }
+            return;
+          }
+          settled = true;
+          root.clearTimeout(timer);
+          if (code === 'adsDisabled' || code === 'adsDisabledBasicLaunch' || code === 'adblock') adsDisabled = true;
+          adPending = false;
+          this.onAdStateChange?.('idle', started);
+          resolve({ finished, code });
+        };
+        // The loading watchdog only applies before playback. Never resume under a video.
+        timer = root.setTimeout(() => {
+          timedOut = true; adsDisabled = true;
+          finish(false, 'timeout');
+        }, 15000);
+        this.onAdStateChange?.('requesting', false);
+        try {
+          sdk.ad.requestAd(type, {
+            adStarted: () => {
+              if ((settled && !timedOut) || started) return;
+              started = true;
+              adPending = true;
+              root.clearTimeout(timer);
+              this.onAdStateChange?.('playing', true);
+            },
+            adFinished: () => finish(true),
+            adError: (error) => finish(false, error?.code || 'other'),
+          });
+        } catch (error) { finish(false, error?.code || 'other'); }
+      });
+    },
     get waitingForSave() { return connecting && !offlineSelected; },
     waitForSave() { return connection; },
     chooseOffline() { offlineSelected = true; },

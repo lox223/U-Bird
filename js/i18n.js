@@ -3,6 +3,13 @@
   'use strict';
   const STR = {
     ru: {
+      rescueAd: 'Смотреть рекламу · +1 птенец',
+      rescueToken: '+1 птенец · жетон (осталось {n})',
+      rescueHelp: 'Один обычный птенец для этой попытки. Крепость остаётся разрушенной. Максимум 2 звезды. Жетоны: за первое прохождение нового уровня, запас до 3.',
+      rescueGranted: '+1 птенец! Заверши уровень — помощь доступна один раз за попытку.',
+      rescueWin: 'Пройдено с помощью · максимум 2 звезды. За 3 звёздами возвращайся без помощи!',
+      adLoading: 'Загружаем рекламу…',
+      adUnavailable: 'Реклама сейчас недоступна. Можно использовать жетон или бесплатно начать заново.',
       continueGame: 'Продолжить', controls: 'Как играть',
       menuDescription: 'Меняй траекторию в ветровых кольцах и рушь крепости цепными реакциями.',
       spaceKey: 'Пробел',
@@ -106,6 +113,13 @@
       locked: 'Пройди предыдущий уровень',
     },
     en: {
+      rescueAd: 'Watch ad · +1 chick',
+      rescueToken: '+1 chick · use token ({n} left)',
+      rescueHelp: 'One normal chick for this attempt. Keep the damage you dealt. Up to 2 stars. Earn tokens on first clears of new levels; hold up to 3.',
+      rescueGranted: '+1 chick! Finish the level — one rescue per attempt.',
+      rescueWin: 'Assisted clear · up to 2 stars. Replay unaided for 3 stars!',
+      adLoading: 'Loading advertisement…',
+      adUnavailable: 'No ad available right now. Use a token or restart for free.',
       continueGame: 'Continue', controls: 'How to play',
       menuDescription: 'Bend your shots through wind rings and bring forts down in a chain reaction.',
       spaceKey: 'Space',

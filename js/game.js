@@ -89,6 +89,7 @@
       const showcase = i !== 0 && !this.reducedMotion && this.cssWidth >= this.cssHeight;
       this.nextT = showcase ? 0.72 : 0.14;
       this.hitStop = 0; this.used = { booster: false, nuke: false }; this.bestCombo = 0; this.comicT = 0; this.leftCount = 0;
+      this.rescueUsed = false;
       // Заставка: камера показывает крепость чувачков и отъезжает к рогатке
       { const es = this.sim.enemies; let ex = 0, ey = 0; es.forEach((e) => { ex += e.position.x; ey += e.position.y; });
         this.zoom = { k: showcase ? 0.75 : 0, x: ex / es.length, y: ey / es.length - 30, amt: 0.36 };
@@ -380,13 +381,27 @@
       setTimeout(() => A.play('taunt', { t: e.game.t }), 200);
     },
 
+    rescue() {
+      if (this.state !== 'lose' || this.rescueUsed || this.def.trial || !this.sim) return false;
+      this.rescueUsed = true;
+      this.used.rescue = true;
+      this.state = 'play'; this.paused = false;
+      this.ending = false; this.waitT = 0; this.nextT = 0.2;
+      this.phase = 'idle'; this.ready = null;
+      this.queue = ['normal'];
+      this.ui.refreshBoosters();
+      return true;
+    },
+
     finishWin() {
       this.state = 'win';
       root.YB.Platform.gameplayStop();
       const score = this.totalScore(), st = this.def.stars;
-      const stars = score >= st[2] ? 3 : score >= st[1] ? 2 : 1;
+      const stars = Math.min(this.rescueUsed ? 2 : 3, score >= st[2] ? 3 : score >= st[1] ? 2 : 1);
       const s = this.save, i = this.levelIdx;
       const newRecord = score > (s.best[i] || 0);
+      // One token for a new clear, never farmable by replaying an easy level.
+      if (!(s.stars[i] > 0)) s.rescueTokens = Math.min(3, (s.rescueTokens || 0) + 1);
       s.best[i] = Math.max(s.best[i] || 0, score);
       // The first three-star clear on a level earns one carried charge (up to three).
       const nukeEarned = !this.def.trial && stars === 3 && (s.stars[i] || 0) < 3 && (s.nukes || 0) < 3;
@@ -636,6 +651,7 @@
 
     // ---------- Кадр ----------
     step() {
+      this.ui.activeSeconds += DT;
       this.updateNuke(DT);
       if (this.introT > 0) this.introT -= DT;
       if (this.hintT > 0 && (this.hintT -= DT) <= 0) this.showHint(this.def.startHint);
