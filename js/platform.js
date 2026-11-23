@@ -6,10 +6,14 @@
   const MIGRATION_KEY = 'yoobird_sdk_save_migrated';
   const SDK_URL = 'https://sdk.crazygames.com/crazygames-sdk-v3.js';
   const STARTUP_LIMIT_MS = 1500;
+  const GAMEPLAY_COOLDOWN_MS = 1050;
   let sdk = null;
   let initialization = null;
   let cloudStorage;
   let playing = false;
+  let reportedPlaying = false;
+  let gameplayTimer;
+  const gameplaySentAt = { gameplayStart: -Infinity, gameplayStop: -Infinity };
   let loadingFinished = false;
 
   async function initializeSdk() {
@@ -35,6 +39,22 @@
     try { sdk?.game?.[name]?.(); } catch (_) {
       // Platform telemetry should never block the game.
     }
+  }
+
+  function syncGameplay() {
+    root.clearTimeout(gameplayTimer);
+    if (!sdk || reportedPlaying === playing) return;
+    const name = playing ? 'gameplayStart' : 'gameplayStop';
+    const now = root.performance.now();
+    const remaining = gameplaySentAt[name] + GAMEPLAY_COOLDOWN_MS - now;
+    if (remaining > 0) {
+      // The SDK drops repeated calls within one second.
+      gameplayTimer = root.setTimeout(syncGameplay, Math.ceil(remaining));
+      return;
+    }
+    reportedPlaying = playing;
+    gameplaySentAt[name] = now;
+    reportGameEvent(name);
   }
 
   function readSave(value) {
@@ -74,7 +94,7 @@
           if (!instance) return;
           sdk = instance;
           if (!loadingFinished) reportGameEvent('loadingStart');
-          if (playing) reportGameEvent('gameplayStart');
+          syncGameplay();
           const updateAudio = (settings) => {
             const muted = settings?.muteAudio === true;
             if (muted === this.muteAudio) return;
@@ -112,13 +132,13 @@
       if (playing) return;
       this.loadingReady();
       playing = true;
-      reportGameEvent('gameplayStart');
+      syncGameplay();
     },
 
     gameplayStop() {
       if (!playing) return;
       playing = false;
-      reportGameEvent('gameplayStop');
+      syncGameplay();
     },
 
     load() {
