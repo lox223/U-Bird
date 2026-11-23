@@ -72,7 +72,8 @@
       if (!visible) return;
       const touch = root.matchMedia('(pointer: coarse)').matches;
       const text = I18n.t(touch ? 'firstShotTouch' : 'firstShot');
-      if (hint.textContent !== text) hint.textContent = text;
+      const instruction = hint.querySelector('span');
+      if (instruction.textContent !== text) instruction.textContent = text;
     },
 
     refreshAbility() {
@@ -122,7 +123,7 @@
     },
 
     markPlayable() {
-      if (Game.running() && Game.phase === 'ready' && this.screen === 'game' && !this.activeModal) P.gameplayStart();
+      if (Game.running() && !Game.ending && ['ready', 'flying'].includes(Game.phase) && this.screen === 'game' && !this.activeModal) P.gameplayStart();
     },
 
     totalStars() { return this.save.stars.reduce((a, b) => a + (b || 0), 0); },
@@ -240,7 +241,7 @@
       const def = LEVELS[i];
       const intro = i > 0 && !def.trial && INTROS.find((it) => !this.save.seen[it.key] && it.has(def));
       this.introQueue = intro ? [intro] : [];
-      if (this.introQueue.length) { Game.extPause.add('intro'); this.nextIntro(i); } else this.banner(i);
+      if (this.introQueue.length) { Game.extPause.add('intro'); this.nextIntro(i); } else if (i > 0) this.banner(i);
     },
     nextIntro(i) {
       const it = this.introQueue.shift();
@@ -428,6 +429,7 @@
       this.closeModals();
       Game.extPause.delete('intro');
       this.hideToast();
+      $('#level-banner').classList.add('hidden');
       this.show('game');
       Game.startLevel(i);
       this.hudTitle();
@@ -504,7 +506,7 @@
           this.modal('pause', false);
           Game.paused = false;
           Game.canvas.focus({ preventScroll: true });
-          if (Game.phase !== 'idle') P.gameplayStart();
+          this.markPlayable();
           this.refreshNukeBtn();
           this.refreshAbility();
           break;
@@ -538,6 +540,7 @@
       if (hidden && !alreadyPaused) {
         Game.extPause.add('hidden');
         Game.cancelAim();
+        P.gameplayStop();
         A.pushPause();
       } else if (!hidden && alreadyPaused) {
         Game.extPause.delete('hidden');
@@ -576,6 +579,10 @@
       if (P.muteAudio) A.pushPause();
       document.addEventListener('visibilitychange', () => this.visibility());
 
+      // A touch right after launching can deliver pointer events without a click.
+      $('#ability-dock').addEventListener('pointerup', (e) => {
+        if (e.isPrimary && e.pointerType === 'touch') this.act('ability');
+      });
       document.addEventListener('click', (e) => {
         const button = e.target.closest('button[data-action]');
         if (!button || button.closest('[inert], .hidden')) return;

@@ -3,9 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#133d32">
+  <meta name="theme-color" content="#ffbd45">
+  <meta name="description" content="Launch your flock, ride the wind through rings, and topple forts in YooBird, a slingshot puzzle with 28 levels.">
   <title>YooBird</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=4">
 </head>
 <body>
   <div id="app">
@@ -50,7 +51,10 @@
       <span data-i18n="bNuke">Storm Burst</span>
     </button>
 
-    <p id="game-controls" class="hidden" aria-live="polite"></p>
+    <p id="game-controls" class="hidden" aria-live="polite">
+      <strong data-i18n="firstGoal">Knock out both defenders</strong>
+      <span></span>
+    </p>
     <button id="ability-dock" class="hidden" data-action="ability" aria-keyshortcuts="Space">
       <span class="ability-label"></span><kbd aria-hidden="true" data-i18n="spaceKey">Space</kbd>
     </button>
@@ -69,7 +73,7 @@
     <section id="screen-menu" class="screen hidden">
       <img class="menu-art" src="art/menu-flock.png" alt="" width="900" height="720">
       <h1 class="logo">Yoo<span>Bird</span></h1>
-      <p class="menu-description" data-i18n="menuDescription">Ride the wind and topple forts across 25 physics puzzles.</p>
+      <p class="menu-description" data-i18n="menuDescription">Bend your shots through wind rings and bring forts down in a chain reaction.</p>
       <div class="menu-col">
         <button class="btn btn-big" data-action="play">
           <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span id="play-label" data-i18n="play">Play</span>
@@ -229,11 +233,11 @@
   <script src="js/wind.js"></script>
   <script src="js/sim.js"></script>
   <script src="js/levels.js"></script>
-  <script src="js/i18n.js"></script>
+  <script src="js/i18n.js?v=4"></script>
   <script src="js/audio.js"></script>
   <script src="js/platform.js"></script>
   <script src="js/render.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="js/game.js?v=4"></script>
+  <script src="js/ui.js?v=4"></script>
 </body>
 </html>

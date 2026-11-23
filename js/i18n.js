@@ -4,7 +4,7 @@
   const STR = {
     ru: {
       continueGame: 'Продолжить', controls: 'Как играть',
-      menuDescription: 'Лови попутный ветер, штурмуй крепости и проходи ветровые испытания.',
+      menuDescription: 'Меняй траекторию в ветровых кольцах и рушь крепости цепными реакциями.',
       spaceKey: 'Пробел',
       ability_speed: 'Рывок вперёд', ability_bomb: 'Взорваться', ability_split: 'Разделиться',
       ability_heavy: 'Пикировать', ability_boomer: 'Развернуться', ability_puff: 'Оттолкнуть цели',
@@ -21,6 +21,8 @@
       controlPointer: 'Мышь или касание', controlPointerD: 'Потяни птенца назад и отпусти. В полёте нажми кнопку способности или игровое поле.',
       controlKeyboard: 'Клавиатура', controlKeyboardD: 'Угол ↑ ↓, сила ← →. Пробел включает прицел, запускает птенца и применяет его способность. P — пауза, C — отмена прицела.',
       controlWind: 'Ветровые кольца', controlWindD: 'Пролети сквозь кольцо, чтобы сменить курс по ветру и получить 1 500 очков.',
+      firstGoal: 'Выбей обоих защитников',
+      firstRing: 'Поймал попутный ветер!',
       firstShot: 'Потяни птенца назад и отпусти · Стрелки и пробел',
       firstShotTouch: 'Потяни птенца назад и отпусти',
       gameCanvas: 'Игровое поле YooBird', prevWorld: 'Предыдущий мир', nextWorld: 'Следующий мир',
@@ -103,7 +105,7 @@
     },
     en: {
       continueGame: 'Continue', controls: 'How to play',
-      menuDescription: 'Ride the wind, topple forts and master the Wind Trials.',
+      menuDescription: 'Bend your shots through wind rings and bring forts down in a chain reaction.',
       spaceKey: 'Space',
       ability_speed: 'Dash forward', ability_bomb: 'Explode', ability_split: 'Split into three',
       ability_heavy: 'Dive down', ability_boomer: 'Turn back', ability_puff: 'Push targets away',
@@ -120,7 +122,9 @@
       controlPointer: 'Mouse or touch', controlPointerD: 'Pull the chick back and release. In flight, tap the ability button or the playfield.',
       controlKeyboard: 'Keyboard', controlKeyboardD: 'Angle ↑ ↓, power ← →. Press Space to aim, launch or use an ability. Press P to pause or C to cancel aiming.',
       controlWind: 'Wind rings', controlWindD: 'Fly through a ring to turn with the wind and earn 1,500 points.',
-      firstShot: 'Pull the chick back and release · Arrow keys and Space',
+      firstGoal: 'Knock out both defenders',
+      firstRing: 'You caught the wind!',
+      firstShot: 'Pull back and release · Arrow keys and Space',
       firstShotTouch: 'Pull the chick back and release',
       gameCanvas: 'YooBird playfield', prevWorld: 'Previous world', nextWorld: 'Next world',
       hintWind: 'Wind rings can redirect your shot. Line up a flight through one!',

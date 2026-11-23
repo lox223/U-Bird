@@ -425,6 +425,7 @@
           A.play('sight', { x: d.x });
           G.haptic('light');
           G.ui.refreshObjectives();
+          if (G.levelIdx === 0 && G.shots === 1) G.showHint('firstRing');
         },
         hit(d) {
           A.play(d.m + 'Hit', { v: d.v, gap: 0.06, x: d.x });
@@ -772,7 +773,10 @@
       }
 
       // Прицел
+      const firstShotGuide = this.levelIdx === 0 && this.shots === 0 && this.phase === 'ready'
+        && !aim && this.running() && !this.nuke.mode;
       if (aim && Math.hypot(aim.dx, aim.dy) >= 25) this.drawAim(ctx, aim);
+      else if (firstShotGuide) this.drawAim(ctx, this.aimVector(this.initialAim()), true);
 
       if (this.taunt && sim.enemies.includes(this.taunt.body)) {
         const b = this.taunt.body;
@@ -784,7 +788,7 @@
       this.drawNuke(ctx, t);
 
       // Подсказка-рука на первом уровне
-      if (this.levelIdx === 0 && this.shots === 0 && this.phase === 'ready' && !aim && this.running() && !this.nuke.mode) this.drawHand(ctx, t);
+      if (firstShotGuide) this.drawHand(ctx, t);
       this.vignette();
     },
 
@@ -821,15 +825,16 @@
       }
     },
 
-    drawAim(ctx, { dx, dy }) {
-      const sight = this.active.sight, cache = this.aimPath;
+    drawAim(ctx, { dx, dy }, guide = false) {
+      const sight = !guide && this.active.sight, cache = this.aimPath;
       if (!cache || cache.dx !== dx || cache.dy !== dy || cache.sight !== sight) {
         const velocity = this.launchVel(dx, dy);
         const stride = sight ? 4 : 3;
         const points = Sim.predict(SX + dx, SY + dy, velocity.x, velocity.y, sight ? 400 : 75, 0.004, this.sim.windRings);
         this.aimPath = { dx, dy, sight, points: points.filter((_, i) => i % stride === stride - 1) };
       }
-      R.dots(ctx, this.aimPath.points, sight ? '#FF7A00' : '#FFFFFF', sight ? undefined : 22);
+      const color = guide ? 'rgba(105,55,20,0.45)' : sight ? '#FF7A00' : '#FFFFFF';
+      R.dots(ctx, this.aimPath.points, color, guide ? 11 : sight ? undefined : 22);
     },
 
     drawHand(ctx, t) {
