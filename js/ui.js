@@ -320,7 +320,8 @@
       this.failures[Game.levelIdx] = (this.failures[Game.levelIdx] || 0) + 1;
       this.rewardOffered = false;
       if (!Game.rescueUsed && !Game.def.trial && Game.levelIdx >= 3 && this.failures[Game.levelIdx] >= 2
-          && this.activeSeconds >= 180 && this.activeSeconds - this.lastRewardOfferAt >= 180 && P.canRequestRewarded) {
+          && this.activeSeconds >= 180 && this.activeSeconds - this.lastVideoAt >= 180
+          && this.activeSeconds - this.lastRewardOfferAt >= 180 && P.canRequestRewarded) {
         this.rewardOffered = true;
         this.lastRewardOfferAt = this.activeSeconds;
       }

@@ -22,6 +22,7 @@
   let loadingFinished = false;
   let adPending = false;
   let adsDisabled = false;
+  let videoConfirmed = false;
 
   async function initializeSdk() {
     if (!root.CrazyGames?.SDK) {
@@ -92,7 +93,9 @@
     onAdStateChange: null,
     get canRequestAd() { return !!sdk?.ad?.requestAd && !adsDisabled && !offlineSelected; },
     get canRequestRewarded() {
-      return this.canRequestAd && root.document.querySelector('meta[name="yoobird-ad-mode"]')?.content === 'full';
+      // Confirm availability through a genuine natural-break video, not a test ad.
+      // Basic Launch never exposes a rewarded button that cannot work.
+      return this.canRequestAd && videoConfirmed;
     },
     get adPending() { return adPending; },
 
@@ -102,35 +105,24 @@
       }
       adPending = true;
       return new Promise((resolve) => {
-        let settled = false, started = false, timedOut = false, timer;
+        let settled = false, started = false;
         const finish = (finished, code) => {
-          if (settled) {
-            // A very late SDK video still owns the pause until its terminal callback.
-            if (timedOut && started && adPending) {
-              adPending = false; this.onAdStateChange?.('idle', true);
-            }
-            return;
-          }
+          if (settled) return;
           settled = true;
-          root.clearTimeout(timer);
+          if (finished && started) videoConfirmed = true;
           if (code === 'adsDisabled' || code === 'adsDisabledBasicLaunch' || code === 'adblock') adsDisabled = true;
           adPending = false;
           this.onAdStateChange?.('idle', started);
           resolve({ finished, code });
         };
-        // The loading watchdog only applies before playback. Never resume under a video.
-        timer = root.setTimeout(() => {
-          timedOut = true; adsDisabled = true;
-          finish(false, 'timeout');
-        }, 15000);
+        // SDK owns the request lifecycle: do not unlock UI before its terminal callback.
         this.onAdStateChange?.('requesting', false);
         try {
           sdk.ad.requestAd(type, {
             adStarted: () => {
-              if ((settled && !timedOut) || started) return;
+              if (settled || started) return;
               started = true;
               adPending = true;
-              root.clearTimeout(timer);
               this.onAdStateChange?.('playing', true);
             },
             adFinished: () => finish(true),
